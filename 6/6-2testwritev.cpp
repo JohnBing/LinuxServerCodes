@@ -94,7 +94,7 @@ int main( int argc, char* argv[] )
             iv[ 0 ].iov_len = strlen( header_buf );
             iv[ 1 ].iov_base = file_buf;
             iv[ 1 ].iov_len = file_stat.st_size;
-            ret = writev( connfd, iv, 2 );
+            ret = writev( connfd, iv, 2 );//将分散的内存写到文件描述符中
         }
         else
         {

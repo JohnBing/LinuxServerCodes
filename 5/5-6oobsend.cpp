@@ -6,7 +6,7 @@
 #include <unistd.h>
 #include <string.h>
 #include <stdlib.h>
-
+#define BUF_SIZE 1024
 int main( int argc, char* argv[] )
 {
     if( argc <= 2 )
@@ -31,11 +31,18 @@ int main( int argc, char* argv[] )
     }
     else
     {
+        // char buffer[ BUF_SIZE ];
+
+        // memset( buffer, '\0', BUF_SIZE );
+        // int ret = recv( sockfd, buffer, BUF_SIZE-1, 0 );
+        // printf( "got %d bytes of normal data '%s'\n", ret, buffer );
+
         printf( "send oob data out\n" );
         const char* oob_data = "abc";
         const char* normal_data = "123";
+        //sleep(10);
         send( sockfd, normal_data, strlen( normal_data ), 0 );
-        send( sockfd, oob_data, strlen( oob_data ), MSG_OOB );
+        //send( sockfd, oob_data, strlen( oob_data ), MSG_OOB );
         send( sockfd, normal_data, strlen( normal_data ), 0 );
     }
 

@@ -42,8 +42,8 @@ int main( int argc, char* argv[] )
     }
     else
     {
-        close( STDOUT_FILENO );
-        dup( connfd );
+        close( STDOUT_FILENO );//关闭标准输出
+        dup( connfd );//复制socket文件描述符，返回标准输出文件描述符，即将标准输出重定向到socket
         printf( "abcd\n" );
         close( connfd );
     }
