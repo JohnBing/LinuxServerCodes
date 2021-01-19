@@ -1,3 +1,11 @@
+<!--
+ * @Author: your name
+ * @Date: 2021-01-19 10:45:37
+ * @LastEditTime: 2021-01-19 15:02:43
+ * @LastEditors: your name
+ * @Description: In User Settings Edit
+ * @FilePath: \LinuxServerCodes\6\learnbook.md
+-->
 Linux提供了很多高级的IO函数，并不像基础IO函数那么常用，但在特定条件下表现出优秀的性能
 - 用于创建文件描述符的函数 pipe dup/dup2
 - 用于读写数据的函数 readv/writev sendfile mmap/munmap splice tee
@@ -26,7 +34,7 @@ mmap用于申请一段内存空间，可以将这段内存作为进程间通信�
 munmap则释放mmap创建的这段内存空间
 
 # 6.6
-splice函数用于在两个文件描述符之间移动数据，也是零拷贝操作。
+splice函数用于在两个文件描述符之间移动数据，也是零拷贝操作。使用splice时必须有一个文件描述符是管道文件描述符
 
 # 6.7
 tee函数在两个管道文件描述符之间复制数据，也是零拷贝操作。
