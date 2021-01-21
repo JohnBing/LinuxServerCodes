@@ -10,11 +10,12 @@
 #include <fcntl.h>
 
 #define BUFFER_SIZE 4096
-enum CHECK_STATE { CHECK_STATE_REQUESTLINE = 0, CHECK_STATE_HEADER, CHECK_STATE_CONTENT };
-enum LINE_STATUS { LINE_OK = 0, LINE_BAD, LINE_OPEN };
+enum CHECK_STATE { CHECK_STATE_REQUESTLINE = 0, CHECK_STATE_HEADER, CHECK_STATE_CONTENT };//主状态机状态
+enum LINE_STATUS { LINE_OK = 0, LINE_BAD, LINE_OPEN };//从状态机状态
 enum HTTP_CODE { NO_REQUEST, GET_REQUEST, BAD_REQUEST, FORBIDDEN_REQUEST, INTERNAL_ERROR, CLOSED_CONNECTION };
 static const char* szret[] = { "I get a correct result\n", "Something wrong\n" };
 
+//从状态机用于解析出一行内容，读取空行
 LINE_STATUS parse_line( char* buffer, int& checked_index, int& read_index )
 {
     char temp;
@@ -49,6 +50,7 @@ LINE_STATUS parse_line( char* buffer, int& checked_index, int& read_index )
     return LINE_OPEN;
 }
 
+//分析请求行
 HTTP_CODE parse_requestline( char* szTemp, CHECK_STATE& checkstate )
 {
     char* szURL = strpbrk( szTemp, " \t" );
@@ -98,6 +100,7 @@ HTTP_CODE parse_requestline( char* szTemp, CHECK_STATE& checkstate )
     return NO_REQUEST;
 }
 
+//分析请求头部
 HTTP_CODE parse_headers( char* szTemp )
 {
     if ( szTemp[ 0 ] == '\0' )
@@ -203,9 +206,9 @@ int main( int argc, char* argv[] )
         char buffer[ BUFFER_SIZE ];
         memset( buffer, '\0', BUFFER_SIZE );
         int data_read = 0;
-        int read_index = 0;
-        int checked_index = 0;
-        int start_line = 0;
+        int read_index = 0;//当前已经读取了多少字节的数据
+        int checked_index = 0;//当前已经分析完了多少字节的数据
+        int start_line = 0;//行在buffer中的起始位置
         CHECK_STATE checkstate = CHECK_STATE_REQUESTLINE;
         while( 1 )
         {
@@ -223,16 +226,16 @@ int main( int argc, char* argv[] )
     
             read_index += data_read;
             HTTP_CODE result = parse_content( buffer, checked_index, checkstate, read_index, start_line );
-            if( result == NO_REQUEST )
+            if( result == NO_REQUEST )//尚未得到一个完整的http请求
             {
                 continue;
             }
-            else if( result == GET_REQUEST )
+            else if( result == GET_REQUEST )//得到了一个完整正确的http请求
             {
                 send( fd, szret[0], strlen( szret[0] ), 0 );
                 break;
             }
-            else
+            else//其他情况表示出错
             {
                 send( fd, szret[1], strlen( szret[1] ), 0 );
                 break;
