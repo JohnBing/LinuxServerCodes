@@ -80,7 +80,7 @@ int main( int argc, char* argv[] )
     
         for( int i = 0; i < user_counter+1; ++i )
         {
-            if( ( fds[i].fd == listenfd ) && ( fds[i].revents & POLLIN ) )
+            if( ( fds[i].fd == listenfd ) && ( fds[i].revents & POLLIN ) )//新到的连接
             {
                 struct sockaddr_in client_address;
                 socklen_t client_addrlength = sizeof( client_address );
@@ -106,7 +106,7 @@ int main( int argc, char* argv[] )
                 fds[user_counter].revents = 0;
                 printf( "comes a new user, now have %d users\n", user_counter );
             }
-            else if( fds[i].revents & POLLERR )
+            else if( fds[i].revents & POLLERR )//出错
             {
                 printf( "get an error from %d\n", fds[i].fd );
                 char errors[ 100 ];
@@ -118,7 +118,7 @@ int main( int argc, char* argv[] )
                 }
                 continue;
             }
-            else if( fds[i].revents & POLLRDHUP )
+            else if( fds[i].revents & POLLRDHUP )//断开连接
             {
                 users[fds[i].fd] = users[fds[user_counter].fd];
                 close( fds[i].fd );
@@ -127,7 +127,7 @@ int main( int argc, char* argv[] )
                 user_counter--;
                 printf( "a client left\n" );
             }
-            else if( fds[i].revents & POLLIN )
+            else if( fds[i].revents & POLLIN )//读入数据
             {
                 int connfd = fds[i].fd;
                 memset( users[connfd].buf, '\0', BUFFER_SIZE );
@@ -163,7 +163,7 @@ int main( int argc, char* argv[] )
                     }
                 }
             }
-            else if( fds[i].revents & POLLOUT )
+            else if( fds[i].revents & POLLOUT )//输出数据
             {
                 int connfd = fds[i].fd;
                 if( ! users[connfd].write_buf )

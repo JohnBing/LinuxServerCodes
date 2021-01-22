@@ -15,6 +15,7 @@
 #define MAX_EVENT_NUMBER 1024
 #define BUFFER_SIZE 10
 
+//将文件描述符设置为非阻塞
 int setnonblocking( int fd )
 {
     int old_option = fcntl( fd, F_GETFL );
@@ -22,7 +23,7 @@ int setnonblocking( int fd )
     fcntl( fd, F_SETFL, new_option );
     return old_option;
 }
-
+//将文件描述符fd上的EPOLLIN注册到epollfd指示的epoll内核事件表中
 void addfd( int epollfd, int fd, bool enable_et )
 {
     epoll_event event;
@@ -47,7 +48,7 @@ void lt( epoll_event* events, int number, int epollfd, int listenfd )
             struct sockaddr_in client_address;
             socklen_t client_addrlength = sizeof( client_address );
             int connfd = accept( listenfd, ( struct sockaddr* )&client_address, &client_addrlength );
-            addfd( epollfd, connfd, false );
+            addfd( epollfd, connfd, false );//设置为lt模式
         }
         else if ( events[i].events & EPOLLIN )
         {
@@ -79,7 +80,7 @@ void et( epoll_event* events, int number, int epollfd, int listenfd )
             struct sockaddr_in client_address;
             socklen_t client_addrlength = sizeof( client_address );
             int connfd = accept( listenfd, ( struct sockaddr* )&client_address, &client_addrlength );
-            addfd( epollfd, connfd, true );
+            addfd( epollfd, connfd, true );//设置为et模式
         }
         else if ( events[i].events & EPOLLIN )
         {
@@ -155,8 +156,8 @@ int main( int argc, char* argv[] )
             break;
         }
     
-        lt( events, ret, epollfd, listenfd );
-        //et( events, ret, epollfd, listenfd );
+        //lt( events, ret, epollfd, listenfd );
+        et( events, ret, epollfd, listenfd );
     }
 
     close( listenfd );

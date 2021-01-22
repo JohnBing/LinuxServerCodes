@@ -37,7 +37,7 @@ int main( int argc, char* argv[] )
         close( sockfd );
         return 1;
     }
-
+    //同时监听标准输入和socket描述符
     pollfd fds[2];
     fds[0].fd = 0;
     fds[0].events = POLLIN;
@@ -59,22 +59,22 @@ int main( int argc, char* argv[] )
             break;
         }
 
-        if( fds[1].revents & POLLRDHUP )
+        if( fds[1].revents & POLLRDHUP )//断开连接
         {
             printf( "server close the connection\n" );
             break;
         }
-        else if( fds[1].revents & POLLIN )
+        else if( fds[1].revents & POLLIN )//socket输入
         {
             memset( read_buf, '\0', BUFFER_SIZE );
             recv( fds[1].fd, read_buf, BUFFER_SIZE-1, 0 );
             printf( "%s\n", read_buf );
         }
 
-        if( fds[0].revents & POLLIN )
+        if( fds[0].revents & POLLIN )//标准输入
         {
-            ret = splice( 0, NULL, pipefd[1], NULL, 32768, SPLICE_F_MORE | SPLICE_F_MOVE );
-            ret = splice( pipefd[0], NULL, sockfd, NULL, 32768, SPLICE_F_MORE | SPLICE_F_MOVE );
+            ret = splice( 0, NULL, pipefd[1], NULL, 32768, SPLICE_F_MORE | SPLICE_F_MOVE );//标准输入到管道入口
+            ret = splice( pipefd[0], NULL, sockfd, NULL, 32768, SPLICE_F_MORE | SPLICE_F_MOVE );//管道出口到socket
         }
     }
     

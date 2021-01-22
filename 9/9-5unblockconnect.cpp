@@ -21,7 +21,8 @@ int setnonblocking( int fd )
     fcntl( fd, F_SETFL, new_option );
     return old_option;
 }
-
+//超时连接函数，参数分别是服务器IP端口号和超时时间。
+//函数成功则返回已经处于连接状态的Socket，失败则返回-1
 int unblock_connect( const char* ip, int port, int time )
 {
     int ret = 0;
@@ -73,20 +74,21 @@ int unblock_connect( const char* ip, int port, int time )
 
     int error = 0;
     socklen_t length = sizeof( error );
+    //调用getsockopt来获取并清楚sockfd上的错误
     if( getsockopt( sockfd, SOL_SOCKET, SO_ERROR, &error, &length ) < 0 )
     {
         printf( "get socket option failed\n" );
         close( sockfd );
         return -1;
     }
-
+    //错误不为0表示连续出错
     if( error != 0 )
     {
         printf( "connection failed after select with the error: %d \n", error );
         close( sockfd );
         return -1;
     }
-    
+    //连接成功
     printf( "connection ready after select with the socket: %d \n", sockfd );
     fcntl( sockfd, F_SETFL, fdopt );
     return sockfd;

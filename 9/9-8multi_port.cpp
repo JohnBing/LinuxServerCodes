@@ -50,7 +50,7 @@ int main( int argc, char* argv[] )
     address.sin_family = AF_INET;
     inet_pton( AF_INET, ip, &address.sin_addr );
     address.sin_port = htons( port );
-
+    //创建TCP socket,并将其绑定到端口上
     int listenfd = socket( PF_INET, SOCK_STREAM, 0 );
     assert( listenfd >= 0 );
 
@@ -59,7 +59,7 @@ int main( int argc, char* argv[] )
 
     ret = listen( listenfd, 5 );
     assert( ret != -1 );
-
+    //创建UDP socket并将其绑定到端口上
     bzero( &address, sizeof( address ) );
     address.sin_family = AF_INET;
     inet_pton( AF_INET, ip, &address.sin_addr );
@@ -88,14 +88,14 @@ int main( int argc, char* argv[] )
         for ( int i = 0; i < number; i++ )
         {
             int sockfd = events[i].data.fd;
-            if ( sockfd == listenfd )
+            if ( sockfd == listenfd )//tcp连接
             {
                 struct sockaddr_in client_address;
                 socklen_t client_addrlength = sizeof( client_address );
                 int connfd = accept( listenfd, ( struct sockaddr* )&client_address, &client_addrlength );
                 addfd( epollfd, connfd );
             }
-            else if ( sockfd == udpfd )
+            else if ( sockfd == udpfd )//udp收发数据
             {
                 char buf[ UDP_BUFFER_SIZE ];
                 memset( buf, '\0', UDP_BUFFER_SIZE );
@@ -108,7 +108,7 @@ int main( int argc, char* argv[] )
                     sendto( udpfd, buf, UDP_BUFFER_SIZE-1, 0, ( struct sockaddr* )&client_address, client_addrlength );
                 }
             }
-            else if ( events[i].events & EPOLLIN )
+            else if ( events[i].events & EPOLLIN )//tcp收发数据
             {
                 char buf[ TCP_BUFFER_SIZE ];
                 while( 1 )
