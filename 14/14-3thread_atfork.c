@@ -41,7 +41,7 @@ int main()
     else if( pid == 0 )
     {
         printf( "I anm in the child, want to get the lock\n" );
-        pthread_mutex_lock( &mutex );
+        pthread_mutex_lock( &mutex );//由于父进程的子线程加锁导致子进程加锁时出现死锁
         printf( "I can not run to here, oop...\n" );
         pthread_mutex_unlock( &mutex );
         exit( 0 );

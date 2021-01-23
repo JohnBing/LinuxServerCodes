@@ -34,7 +34,7 @@ int main( int argc, char* argv[] )
     {
         return 1;
     }
-    else if( id == 0 )
+    else if( id == 0 )//父进程
     {
         printf( "child try to get binary sem\n" );
         pv( sem_id, -1 );
@@ -43,7 +43,7 @@ int main( int argc, char* argv[] )
         pv( sem_id, 1 );
         exit( 0 );
     }
-    else
+    else//子进程
     {
         printf( "parent try to get binary sem\n" );
         pv( sem_id, -1 );
@@ -52,7 +52,7 @@ int main( int argc, char* argv[] )
         pv( sem_id, 1 );
     }
 
-    waitpid( id, NULL, 0 );
-    semctl( sem_id, 0, IPC_RMID, sem_un );
+    waitpid( id, NULL, 0 );//父进程等待子进程
+    semctl( sem_id, 0, IPC_RMID, sem_un );//删除信号量
     return 0;
 }

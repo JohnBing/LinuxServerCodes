@@ -1,3 +1,11 @@
+/*
+ * @Author: your name
+ * @Date: 2021-01-19 10:45:37
+ * @LastEditTime: 2021-01-23 15:36:40
+ * @LastEditors: your name
+ * @Description: In User Settings Edit
+ * @FilePath: \LinuxServerCodes\13\13-4shm_talk_server.cpp
+ */
 #include <sys/socket.h>
 #include <netinet/in.h>
 #include <arpa/inet.h>
@@ -20,13 +28,13 @@
 #define FD_LIMIT 65535
 #define MAX_EVENT_NUMBER 1024
 #define PROCESS_LIMIT 65536
-
+//处理一个客户连接必要的数据
 struct client_data
 {
-    sockaddr_in address;
-    int connfd;
-    pid_t pid;
-    int pipefd[2];
+    sockaddr_in address;//客户端socket地址
+    int connfd;//socket文件描述符
+    pid_t pid;//处理这个连接的子进程的PID
+    int pipefd[2];//和父进程通信用的管道
 };
 
 static const char* shm_name = "/my_shm";
@@ -89,13 +97,14 @@ void del_resource()
     delete [] sub_process;
 }
 
-void child_term_handler( int sig )
+void child_term_handler( int sig )//停止一个子进程
 {
     stop_child = true;
 }
-
+//子进程运行的函数。参数idx指出该子进程处理的客户连接的编号，users是保存所有客户连接数据的数组，share_mem是共享内存的起始地址
 int run_child( int idx, client_data* users, char* share_mem )
 {
+    //使用IO复用同时监听socket和与父进程通信的管道文件描述符
     epoll_event events[ MAX_EVENT_NUMBER ];
     int child_epollfd = epoll_create( 5 );
     assert( child_epollfd != -1 );
@@ -104,7 +113,7 @@ int run_child( int idx, client_data* users, char* share_mem )
     int pipefd = users[idx].pipefd[1];
     addfd( child_epollfd, pipefd );
     int ret;
-    addsig( SIGTERM, child_term_handler, false );
+    addsig( SIGTERM, child_term_handler, false );//子进程需要设置自己的信号处理函数
 
     while( !stop_child )
     {
@@ -118,9 +127,10 @@ int run_child( int idx, client_data* users, char* share_mem )
         for ( int i = 0; i < number; i++ )
         {
             int sockfd = events[i].data.fd;
-            if( ( sockfd == connfd ) && ( events[i].events & EPOLLIN ) )
+            if( ( sockfd == connfd ) && ( events[i].events & EPOLLIN ) )//客户连接有数据到来
             {
                 memset( share_mem + idx*BUFFER_SIZE, '\0', BUFFER_SIZE );
+                //将客户数据读取到共享内存
                 ret = recv( connfd, share_mem + idx*BUFFER_SIZE, BUFFER_SIZE-1, 0 );
                 if( ret < 0 )
                 {
@@ -135,10 +145,10 @@ int run_child( int idx, client_data* users, char* share_mem )
                 }
                 else
                 {
-                    send( pipefd, ( char* )&idx, sizeof( idx ), 0 );
+                    send( pipefd, ( char* )&idx, sizeof( idx ), 0 );//成功读取客户数据后通知主进程处理
                 }
             }
-            else if( ( sockfd == pipefd ) && ( events[i].events & EPOLLIN ) )
+            else if( ( sockfd == pipefd ) && ( events[i].events & EPOLLIN ) )//主进程通知本进程将第client个客户的数据发送到本进程负责的客户端
             {
                 int client = 0;
                 ret = recv( sockfd, ( char* )&client, sizeof( client ), 0 );
@@ -198,8 +208,8 @@ int main( int argc, char* argv[] )
     assert( ret != -1 );
 
     user_count = 0;
-    users = new client_data [ USER_LIMIT+1 ];
-    sub_process = new int [ PROCESS_LIMIT ];
+    users = new client_data [ USER_LIMIT+1 ];//客户连接数组，用客户连接的编号索引即可获得客户连接数据
+    sub_process = new int [ PROCESS_LIMIT ];//子进程和客户连接的映射关系表，用PID索引即可取得客户连接的编号
     for( int i = 0; i < PROCESS_LIMIT; ++i )
     {
         sub_process[i] = -1;
@@ -222,7 +232,7 @@ int main( int argc, char* argv[] )
     bool stop_server = false;
     bool terminate = false;
 
-    shmfd = shm_open( shm_name, O_CREAT | O_RDWR, 0666 );
+    shmfd = shm_open( shm_name, O_CREAT | O_RDWR, 0666 );//创建共享内存
     assert( shmfd != -1 );
     ret = ftruncate( shmfd, USER_LIMIT * BUFFER_SIZE ); 
     assert( ret != -1 );
@@ -243,7 +253,7 @@ int main( int argc, char* argv[] )
         for ( int i = 0; i < number; i++ )
         {
             int sockfd = events[i].data.fd;
-            if( sockfd == listenfd )
+            if( sockfd == listenfd )//新的客户连接
             {
                 struct sockaddr_in client_address;
                 socklen_t client_addrlength = sizeof( client_address );
@@ -263,7 +273,7 @@ int main( int argc, char* argv[] )
                 }
                 users[user_count].address = client_address;
                 users[user_count].connfd = connfd;
-                ret = socketpair( PF_UNIX, SOCK_STREAM, 0, users[user_count].pipefd );
+                ret = socketpair( PF_UNIX, SOCK_STREAM, 0, users[user_count].pipefd );//在父进程和子进程间建立通道
                 assert( ret != -1 );
                 pid_t pid = fork();
                 if( pid < 0 )
@@ -271,7 +281,7 @@ int main( int argc, char* argv[] )
                     close( connfd );
                     continue;
                 }
-                else if( pid == 0 )
+                else if( pid == 0 )//子进程
                 {
                     close( epollfd );
                     close( listenfd );
@@ -282,7 +292,7 @@ int main( int argc, char* argv[] )
                     munmap( (void*)share_mem,  USER_LIMIT * BUFFER_SIZE );
                     exit( 0 );
                 }
-                else
+                else//父进程
                 {
                     close( connfd );
                     close( users[user_count].pipefd[1] );
@@ -292,7 +302,7 @@ int main( int argc, char* argv[] )
                     user_count++;
                 }
             }
-            else if( ( sockfd == sig_pipefd[0] ) && ( events[i].events & EPOLLIN ) )
+            else if( ( sockfd == sig_pipefd[0] ) && ( events[i].events & EPOLLIN ) )//处理信号事件
             {
                 int sig;
                 char signals[1024];
@@ -363,7 +373,7 @@ int main( int argc, char* argv[] )
                     }
                 }
             }
-            else if( events[i].events & EPOLLIN )
+            else if( events[i].events & EPOLLIN )//某个子进程向父进程写入数据
             {
                 int child = 0;
                 ret = recv( sockfd, ( char* )&child, sizeof( child ), 0 );

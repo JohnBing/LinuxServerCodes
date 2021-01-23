@@ -54,12 +54,12 @@ int recv_fd( int fd )
     int fd_to_read = *(int *)CMSG_DATA( &cm );
     return fd_to_read;
 }
-
+//在进程间传递文件描述符
 int main()
 {
     int pipefd[2];
     int fd_to_pass = 0;
-
+    //创建父子进程间的管道，pipefd[0]和pipefd[1]都是UNIX域socket
     int ret = socketpair( PF_UNIX, SOCK_DGRAM, 0, pipefd );
     assert( ret != -1 );
 
