@@ -32,3 +32,8 @@
 当某个线程调用fork函数时，产生的子进程只拥有一个执行线程且是调用fork的那个线程的完整复制。子进程将继承父进程中互斥锁的状态，若互斥锁被其他线程锁住，若调用fork的这个线程再次加锁将会导致死锁。
 
 pthread提供了一个专门的函数`pthread_atfork`,以确保fork调用后父进程和子进程都拥有一个清楚的锁状态。
+
+每个线程都可以独立设置信号掩码。设置进程信号掩码的函数是`sigprocmask`，在多线程环境下我们应使用pthread版本的`sigprocmask`来设置线程信号掩码
+```C++
+int pthread_sigmask(int how,const sigset_t* newmask,sigset_t* oldmask);
+```

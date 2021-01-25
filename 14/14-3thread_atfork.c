@@ -29,7 +29,7 @@ int main()
     pthread_mutex_init( &mutex, NULL );
     pthread_t id;
     pthread_create( &id, NULL, another, NULL );
-    //pthread_atfork( prepare, infork, infork );
+    pthread_atfork( prepare, infork, infork );
     sleep( 1 );
     int pid = fork();
     if( pid < 0 )

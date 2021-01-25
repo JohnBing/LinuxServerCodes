@@ -37,7 +37,7 @@ void sig_handler( int sig )
 {
     int save_errno = errno;
     int msg = sig;
-    send( pipefd[1], ( char* )&msg, 1, 0 );
+    send( pipefd[1], ( char* )&msg, 1, 0 );//通过管道通知主循环
     errno = save_errno;
 }
 
@@ -113,14 +113,14 @@ int main( int argc, char* argv[] )
         for ( int i = 0; i < number; i++ )
         {
             int sockfd = events[i].data.fd;
-            if( sockfd == listenfd )
+            if( sockfd == listenfd )//接收到连接
             {
                 struct sockaddr_in client_address;
                 socklen_t client_addrlength = sizeof( client_address );
                 int connfd = accept( listenfd, ( struct sockaddr* )&client_address, &client_addrlength );
                 addfd( epollfd, connfd );
             }
-            else if( ( sockfd == pipefd[0] ) && ( events[i].events & EPOLLIN ) )
+            else if( ( sockfd == pipefd[0] ) && ( events[i].events & EPOLLIN ) )//接收到信号的逻辑代码
             {
                 int sig;
                 char signals[1024];
@@ -137,7 +137,7 @@ int main( int argc, char* argv[] )
                 {
                     for( int i = 0; i < ret; ++i )
                     {
-                        //printf( "I caugh the signal %d\n", signals[i] );
+                        printf( "I caugh the signal %d\n", signals[i] );
                         switch( signals[i] )
                         {
                             case SIGCHLD:
