@@ -103,7 +103,7 @@ int main( int argc, char* argv[] )
         for ( int i = 0; i < number; i++ )
         {
             int sockfd = events[i].data.fd;
-            if( sockfd == listenfd )
+            if( sockfd == listenfd )//有连接请求
             {
                 struct sockaddr_in client_address;
                 socklen_t client_addrlength = sizeof( client_address );
@@ -121,11 +121,11 @@ int main( int argc, char* argv[] )
                 
                 users[connfd].init( connfd, client_address );
             }
-            else if( events[i].events & ( EPOLLRDHUP | EPOLLHUP | EPOLLERR ) )
+            else if( events[i].events & ( EPOLLRDHUP | EPOLLHUP | EPOLLERR ) )//信号异常
             {
                 users[sockfd].close_conn();
             }
-            else if( events[i].events & EPOLLIN )
+            else if( events[i].events & EPOLLIN )//有请求到达
             {
                 if( users[sockfd].read() )
                 {
@@ -136,7 +136,7 @@ int main( int argc, char* argv[] )
                     users[sockfd].close_conn();
                 }
             }
-            else if( events[i].events & EPOLLOUT )
+            else if( events[i].events & EPOLLOUT )//回复请求
             {
                 if( !users[sockfd].write() )
                 {

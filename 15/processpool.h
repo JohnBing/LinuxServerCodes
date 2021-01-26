@@ -17,7 +17,7 @@
 #include <sys/wait.h>
 #include <sys/stat.h>
 
-class process
+class process//描述一个子进程的类，m_pid是目标子进程的PID，m_pipefd是父子进程通信用的管道
 {
 public:
     process() : m_pid( -1 ){}
@@ -28,12 +28,12 @@ public:
 };
 
 template< typename T >
-class processpool
+class processpool//进程池类
 {
 private:
     processpool( int listenfd, int process_number = 8 );
 public:
-    static processpool< T >* create( int listenfd, int process_number = 8 )
+    static processpool< T >* create( int listenfd, int process_number = 8 )//单例模式
     {
         if( !m_instance )
         {
@@ -56,17 +56,17 @@ private:
     static const int MAX_PROCESS_NUMBER = 16;
     static const int USER_PER_PROCESS = 65536;
     static const int MAX_EVENT_NUMBER = 10000;
-    int m_process_number;
-    int m_idx;
-    int m_epollfd;
-    int m_listenfd;
-    int m_stop;
-    process* m_sub_process;
-    static processpool< T >* m_instance;
+    int m_process_number;//进程池中的数量
+    int m_idx;//子进程在池中的序号
+    int m_epollfd;//每个进程都有一个epoll内核时间表，用m_epollfd标识
+    int m_listenfd;//监听socket
+    int m_stop;//子进程通过m_stop来决定是否停止运行
+    process* m_sub_process;//保持所有子进程的描述信息
+    static processpool< T >* m_instance;//进程池静态实例
 };
 template< typename T >
 processpool< T >* processpool< T >::m_instance = NULL;
-
+//用于处理信号的管道，以实现统一事件源后面称之为信号管道
 static int sig_pipefd[2];
 
 static int setnonblocking( int fd )
@@ -113,6 +113,9 @@ static void addsig( int sig, void( handler )(int), bool restart = true )
     assert( sigaction( sig, &sa, NULL ) != -1 );
 }
 
+//进程池构造函数，
+//参数listenfd是监听socket，塔必须在创建进程池之前被创建，否则子进程无法直接饮用它。
+//参数process_number指定进程池中子进程的数量
 template< typename T >
 processpool< T >::processpool( int listenfd, int process_number ) 
     : m_listenfd( listenfd ), m_process_number( process_number ), m_idx( -1 ), m_stop( false )
@@ -127,7 +130,7 @@ processpool< T >::processpool( int listenfd, int process_number )
         int ret = socketpair( PF_UNIX, SOCK_STREAM, 0, m_sub_process[i].m_pipefd );
         assert( ret == 0 );
 
-        m_sub_process[i].m_pid = fork();
+        m_sub_process[i].m_pid = fork();//创建子进程
         assert( m_sub_process[i].m_pid >= 0 );
         if( m_sub_process[i].m_pid > 0 )
         {
@@ -143,6 +146,7 @@ processpool< T >::processpool( int listenfd, int process_number )
     }
 }
 
+//统一事件源
 template< typename T >
 void processpool< T >::setup_sig_pipe()
 {
@@ -153,7 +157,7 @@ void processpool< T >::setup_sig_pipe()
     assert( ret != -1 );
 
     setnonblocking( sig_pipefd[1] );
-    addfd( m_epollfd, sig_pipefd[0] );
+    addfd( m_epollfd, sig_pipefd[0] );//将信号管道添加到监听表中
 
     addsig( SIGCHLD, sig_handler );
     addsig( SIGTERM, sig_handler );
@@ -161,6 +165,7 @@ void processpool< T >::setup_sig_pipe()
     addsig( SIGPIPE, SIG_IGN );
 }
 
+//父进程中m_idx值为-1，子进程中m_idx值大于等于0，我们据此判断接下来运行的是父进程代码还是子进程代码
 template< typename T >
 void processpool< T >::run()
 {
@@ -178,7 +183,7 @@ void processpool< T >::run_child()
     setup_sig_pipe();
 
     int pipefd = m_sub_process[m_idx].m_pipefd[ 1 ];
-    addfd( m_epollfd, pipefd );
+    addfd( m_epollfd, pipefd );//子进程需要监听管道文件描述符pipefd，因为父进程将通过它来通知子进程accept新连接
 
     epoll_event events[ MAX_EVENT_NUMBER ];
     T* users = new T [ USER_PER_PROCESS ];
@@ -198,10 +203,10 @@ void processpool< T >::run_child()
         for ( int i = 0; i < number; i++ )
         {
             int sockfd = events[i].data.fd;
-            if( ( sockfd == pipefd ) && ( events[i].events & EPOLLIN ) )
+            if( ( sockfd == pipefd ) && ( events[i].events & EPOLLIN ) )//来自父进程的通知，建立连接
             {
                 int client = 0;
-                ret = recv( sockfd, ( char* )&client, sizeof( client ), 0 );
+                ret = recv( sockfd, ( char* )&client, sizeof( client ), 0 );//从父子进程的管道读取数据并将结果保存在变量client中
                 if( ( ( ret < 0 ) && ( errno != EAGAIN ) ) || ret == 0 ) 
                 {
                     continue;
@@ -217,10 +222,10 @@ void processpool< T >::run_child()
                         continue;
                     }
                     addfd( m_epollfd, connfd );
-                    users[connfd].init( m_epollfd, connfd, client_address );
+                    users[connfd].init( m_epollfd, connfd, client_address );//模板类必须实现init方法以初始化一个客户连接，我们使用connfd来索引逻辑处理对象以提高程序效率
                 }
             }
-            else if( ( sockfd == sig_pipefd[0] ) && ( events[i].events & EPOLLIN ) )
+            else if( ( sockfd == sig_pipefd[0] ) && ( events[i].events & EPOLLIN ) )//来自信号的通知
             {
                 int sig;
                 char signals[1024];
@@ -259,7 +264,7 @@ void processpool< T >::run_child()
                     }
                 }
             }
-            else if( events[i].events & EPOLLIN )
+            else if( events[i].events & EPOLLIN )//子进程处理客户请求
             {
                  users[sockfd].process();
             }
@@ -302,9 +307,9 @@ void processpool< T >::run_parent()
         for ( int i = 0; i < number; i++ )
         {
             int sockfd = events[i].data.fd;
-            if( sockfd == m_listenfd )
+            if( sockfd == m_listenfd )//监听到连接请求
             {
-                int i =  sub_process_counter;
+                int i =  sub_process_counter;//有新连接到来时采用Round Robin方式将其分配给一个子进程处理
                 do
                 {
                     if( m_sub_process[i].m_pid != -1 )
@@ -326,7 +331,7 @@ void processpool< T >::run_parent()
                 printf( "send request to child %d\n", i );
                 //sub_process_counter %= m_process_number;
             }
-            else if( ( sockfd == sig_pipefd[0] ) && ( events[i].events & EPOLLIN ) )
+            else if( ( sockfd == sig_pipefd[0] ) && ( events[i].events & EPOLLIN ) )//信号
             {
                 int sig;
                 char signals[1024];
@@ -350,14 +355,14 @@ void processpool< T >::run_parent()
                                     for( int i = 0; i < m_process_number; ++i )
                                     {
                                         if( m_sub_process[i].m_pid == pid )
-                                        {
+                                        {//如果进程池中第i个子进程退出,则主进程关闭相应的通信管道，并设置相应的m_pid为-1以标记该子进程已退出
                                             printf( "child %d join\n", i );
                                             close( m_sub_process[i].m_pipefd[0] );
                                             m_sub_process[i].m_pid = -1;
                                         }
                                     }
                                 }
-                                m_stop = true;
+                                m_stop = true;//如果所有子进程都已经退出，则父进程也退出
                                 for( int i = 0; i < m_process_number; ++i )
                                 {
                                     if( m_sub_process[i].m_pid != -1 )
@@ -369,7 +374,7 @@ void processpool< T >::run_parent()
                             }
                             case SIGTERM:
                             case SIGINT:
-                            {
+                            {//如果父进程接收到终止信号，那么就杀死所有子进程并等待他们全部退出
                                 printf( "kill all the clild now\n" );
                                 for( int i = 0; i < m_process_number; ++i )
                                 {
