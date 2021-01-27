@@ -26,10 +26,10 @@ public:
     static const int FILENAME_LEN = 200;
     static const int READ_BUFFER_SIZE = 2048;
     static const int WRITE_BUFFER_SIZE = 1024;
-    enum METHOD { GET = 0, POST, HEAD, PUT, DELETE, TRACE, OPTIONS, CONNECT, PATCH };
-    enum CHECK_STATE { CHECK_STATE_REQUESTLINE = 0, CHECK_STATE_HEADER, CHECK_STATE_CONTENT };
-    enum HTTP_CODE { NO_REQUEST, GET_REQUEST, BAD_REQUEST, NO_RESOURCE, FORBIDDEN_REQUEST, FILE_REQUEST, INTERNAL_ERROR, CLOSED_CONNECTION };
-    enum LINE_STATUS { LINE_OK = 0, LINE_BAD, LINE_OPEN };
+    enum METHOD { GET = 0, POST, HEAD, PUT, DELETE, TRACE, OPTIONS, CONNECT, PATCH };//http请求方法，我们仅支持GET
+    enum CHECK_STATE { CHECK_STATE_REQUESTLINE = 0, CHECK_STATE_HEADER, CHECK_STATE_CONTENT };//解析客户请求时，主状态机所处的状态
+    enum HTTP_CODE { NO_REQUEST, GET_REQUEST, BAD_REQUEST, NO_RESOURCE, FORBIDDEN_REQUEST, FILE_REQUEST, INTERNAL_ERROR, CLOSED_CONNECTION };//服务器处理HTTP请求的可能结果
+    enum LINE_STATUS { LINE_OK = 0, LINE_BAD, LINE_OPEN };//行的读取状态
 
 public:
     http_conn(){}
@@ -38,22 +38,22 @@ public:
 public:
     void init( int sockfd, const sockaddr_in& addr );
     void close_conn( bool real_close = true );
-    void process();
-    bool read();
-    bool write();
+    void process();//处理客户请求
+    bool read();//非阻塞读
+    bool write();//非阻塞写
 
 private:
     void init();
-    HTTP_CODE process_read();
-    bool process_write( HTTP_CODE ret );
-
+    HTTP_CODE process_read();//解析HTTP请求
+    bool process_write( HTTP_CODE ret );//填充HTTP应答
+    //下面这一组函数被process_read调用以分析HTTP请求
     HTTP_CODE parse_request_line( char* text );
     HTTP_CODE parse_headers( char* text );
     HTTP_CODE parse_content( char* text );
     HTTP_CODE do_request();
     char* get_line() { return m_read_buf + m_start_line; }
     LINE_STATUS parse_line();
-
+    //下面这组函数被process_write调用以填充HTTP应答
     void unmap();
     bool add_response( const char* format, ... );
     bool add_content( const char* content );
