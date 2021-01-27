@@ -68,3 +68,10 @@ int listen(int sockfd,int backlog)
 TCP数据读写 recv和send
 UDP数据读写 recvfrom和sendto
 通用数据读写 recvmsg和sendmsg
+
+# 关于IO的理解
+[IO模型的理解](https://www.cnblogs.com/felixzh/p/10345929.html)
+io分两个阶段：
+- 数据准备阶段
+- 内核空间复制回用户进程缓冲区阶段
+  一般来讲阻塞io模型、非阻塞io模型、io复用模型、信号驱动io模型都属于同步IO,因为阶段二是阻塞的。只有异步IO模型是符合POSIX异步IO操作含义的，不管在阶段一还是在阶段二都可以干别的事
